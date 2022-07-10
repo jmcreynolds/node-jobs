@@ -2,7 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const lineReader = require('line-reader');
 const d = new Date();
-const today = 1 //d.getDay();
+const today = d.getDay();
 
 let schedule = {
     0: { wordDay: "sun", run: [] },
@@ -14,12 +14,11 @@ let schedule = {
     6: { wordDay: "sat", run: [] },
 }
 
-
 const getDamData = async (dam_url, file, parseFile) => {
+
     const resp = await axios.get(dam_url, {responseType: "stream"} )  
     .then(response => {  
         response.data.pipe(fs.createWriteStream(file));  
-        console.log("Got Some")
     })  
     .catch(error => {  
         console.log(error);  
@@ -29,6 +28,7 @@ const getDamData = async (dam_url, file, parseFile) => {
 }
 
 const parseFile = (file) => {
+
     lineReader.eachLine(file, function(line, last) {
         
         if (line.match(/^PROJECTED/)){
@@ -38,19 +38,24 @@ const parseFile = (file) => {
             const iso = date.toISOString();
             console.log(iso)
         }
+
         if (line.match(/^[ ]{1,2}(2[0-4]|1[0-9]|[1-9])/)) {
             let arr = line.split('   ');
             console.log(arr[0], arr[12])
-         }
-         
+        }
+
+        if(last){
+            fs.unlinkSync(file);
+        }
+        
     });
+    
 }
 
 Object.entries(schedule[today].run).forEach(entry => {
-    const file = "/tmp/dam.data-" + Math.floor(+new Date() / 1000);
     const [key, run_day]  = entry
-    console.log(run_day)
+    wordDay = schedule[run_day].wordDay;
+    const file = "/tmp/dam.data-" + wordDay;
     const dam_url = "https://swpa.gov/gen/" + schedule[run_day].wordDay + ".htm";
-    console.log(dam_url);
     getDamData(dam_url, file, parseFile);
 });
